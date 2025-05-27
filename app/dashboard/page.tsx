@@ -3,6 +3,7 @@
 import { Plus, Search, Filter, ChevronRight, ChevronLeft, MoreVertical, Star, FileText, Copy, ThumbsUp, Calendar, Clock, BarChart4, CreditCard, DollarSign, CalendarDays, CalendarRange, CalendarCheck, Loader2, ChevronDown, ChevronUp, Printer, MessageSquare, Edit } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -122,18 +123,17 @@ export default function DashboardPage() {
     // TODO: Implement actual complaint functionality
   }
 
+  const router = useRouter()
+
   const handleEditRequest = (request: UIRequest) => {
     const requestType = request.type.toLowerCase()
     const editUrl = `/request/new/${requestType}?edit=${request.id}`
 
     toast.info(`Opening ${request.type} request for editing: ${request.id}`)
 
-    // Use Next.js router for client-side navigation
     try {
-      const { push } = require('next/navigation')
-      push(editUrl)
+      router.push(editUrl)
     } catch (err) {
-      // Fallback to window location if router is not available
       window.location.href = editUrl
     }
   }
