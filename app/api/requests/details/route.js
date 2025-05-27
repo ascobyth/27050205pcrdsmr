@@ -85,6 +85,8 @@ export async function GET(request) {
       requesterCostCenter: requestData.requesterCostCenter,
       urgentType: requestData.urgentType,
       urgencyReason: requestData.urgencyReason,
+      jsonSampleList: requestData.jsonSampleList || "",
+      jsonTestingList: requestData.jsonTestingList || "",
       progress: 0, // Will be calculated based on samples
     };
 
