@@ -360,3 +360,8 @@ This implementation allows users to submit equipment reservation requests, which
 - User Concerned: request-management
 - Issue: Edit page did not preload request data
 - Progress: Added jsonSampleList and jsonTestingList to details API and improved navigation
+
+## Update - Edit Navigation Router Fix
+- User Concerned: request-management
+- Issue: Edit button in dashboard didn't navigate with query parameters
+- Progress: Replaced dynamic require with useRouter and router.push to pass the edit parameter correctly
