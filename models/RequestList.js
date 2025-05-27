@@ -21,7 +21,7 @@ const RequestListSchema = new Schema(
     // Request status tracking
     requestStatus: {
       type: String,
-      enum: ['draft', 'submitted', 'in-progress', 'completed', 'rejected', 'terminated', 'cancelled', 'Pending Receive Sample'],
+      enum: ['draft', 'submitted', 'Pending Receive', 'in-progress', 'completed', 'rejected', 'terminated', 'cancelled'],
       default: 'draft',
       required: true,
       index: true
@@ -104,9 +104,27 @@ const RequestListSchema = new Schema(
       type: String,
       description: 'Address for returning samples after testing'
     },
+
+    // Evaluation information
+    isEvaluated: {
+      type: Boolean,
+      default: false,
+      description: 'Whether this request has been evaluated by the requester'
+    },
     evaluationScore: {
+      type: Number,
+      min: 1,
+      max: 5,
+      description: 'Star rating from 1-5 given by the requester'
+    },
+    evaluationComment: {
       type: String,
-      description: 'JSON string containing evaluation scores and comments from requester'
+      maxlength: [1000, 'Evaluation comment cannot exceed 1000 characters'],
+      description: 'Comment provided by the requester during evaluation'
+    },
+    evaluationDate: {
+      type: Date,
+      description: 'Date when the evaluation was submitted'
     },
 
     // ASR project reference

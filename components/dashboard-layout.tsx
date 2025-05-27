@@ -195,7 +195,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       title: "Request Management",
       icon: <ClipboardList className="h-5 w-5" />,
       variant: "ghost",
-      href: "/request-management",
+      subItems: [
+        {
+          title: "NTR",
+          href: "/request-management",
+          icon: <FlaskConical className="h-4 w-4" />,
+        },
+        {
+          title: "ASR",
+          href: "/request-management/asr",
+          icon: <Beaker className="h-4 w-4" />,
+        },
+        {
+          title: "ER",
+          href: "/request-management/er",
+          icon: <Wrench className="h-4 w-4" />,
+        },
+      ],
     },
     {
       title: "Results Repository",

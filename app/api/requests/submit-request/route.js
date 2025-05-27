@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import connectToDatabase, { mongoose } from '@/lib/db';
 import crypto from 'crypto';
 
+// Clear model cache to ensure we get the latest schema
+if (mongoose.models.TestingSampleList) {
+  delete mongoose.models.TestingSampleList;
+}
+if (mongoose.models.RequestList) {
+  delete mongoose.models.RequestList;
+}
+
 // Import models directly
 const RequestList = mongoose.models.RequestList || require('@/models/RequestList');
 const TestingSampleList = mongoose.models.TestingSampleList || require('@/models/TestingSampleList');
@@ -195,7 +203,7 @@ async function createRequests(body, methodsByCapability, requestNumbers) {
     const requestData = {
       // Core request identification
       requestNumber,
-      requestStatus: 'Pending Receive Sample', // Using the required status for new requests
+      requestStatus: 'Pending Receive', // Using the correct status for new requests
 
       // Request details
       requestTitle: body.requestTitle,
@@ -341,7 +349,7 @@ async function createTestingSamples(body, methodsByCapability, requestNumbers, c
             testingId,
 
             // Status tracking
-            sampleStatus: 'submitted',
+            sampleStatus: 'Pending Receive',
 
             // Important dates
             submitDate: new Date(),

@@ -108,9 +108,10 @@ const TestingSampleListSchema = new Schema(
       enum: [
         'draft',
         'submitted',
+        'Pending Receive',
         'in-progress',
         'operation-completed',
-        'test-results-completed',
+        'test-results-completed', 
         'completed',
         'rejected',
         'terminated',

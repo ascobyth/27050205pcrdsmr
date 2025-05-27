@@ -85,7 +85,7 @@ const RequestTypeBadge = ({ type }: { type: string }) => {
   }
 }
 
-export default function NTRRequestManagementPage() {
+export default function ASRRequestManagementPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [capabilityFilter, setCapabilityFilter] = useState("all")
@@ -113,7 +113,7 @@ export default function NTRRequestManagementPage() {
   // Capabilities from API
   const [capabilities, setCapabilities] = useState<any[]>([])
   const [capabilityCounts, setCapabilityCounts] = useState<Record<string, number>>({})
-  const [grandTotal, setGrandTotal] = useState(0) // Grand total for "All Capabilities"
+
   // Status counts
   const [pendingCount, setPendingCount] = useState(0)
   const [inProgressCount, setInProgressCount] = useState(0)
@@ -125,30 +125,21 @@ export default function NTRRequestManagementPage() {
   const fetchRequests = async () => {
     setLoading(true)
     try {
-      console.log('Fetching requests with filters:', {
+      console.log('Fetching ASR requests with filters:', {
         status: statusFilter,
         priority: priorityFilter,
         capability: capabilityFilter,
-        type: 'all', // Changed to 'all' to include both NTR and ASR
+        type: 'asr',
         search: searchQuery,
         page: currentPage
       });
 
       const response = await fetch(
-        `/api/requests/manage?status=${encodeURIComponent(statusFilter)}&priority=${priorityFilter}&capability=${capabilityFilter}&type=all&search=${encodeURIComponent(searchQuery)}&page=${currentPage}&limit=${pageSize}`
+        `/api/requests/manage?status=${encodeURIComponent(statusFilter)}&priority=${priorityFilter}&capability=${capabilityFilter}&type=asr&search=${encodeURIComponent(searchQuery)}&page=${currentPage}&limit=${pageSize}`
       )
       const data = await response.json()
-      
-      console.log('API Response:', data);
 
       if (data.success) {
-        console.log('Processing successful API response:', {
-          dataLength: data.data?.length,
-          grandTotal: data.grandTotal,
-          capabilityCounts: data.capabilityCounts,
-          capabilities: data.capabilities?.length
-        });
-        
         // Get basic request data
         const requestsData = data.data || [];
 
@@ -198,13 +189,6 @@ export default function NTRRequestManagementPage() {
         if (data.capabilityCounts) {
           setCapabilityCounts(data.capabilityCounts)
         }
-
-        // Update grand total
-        if (data.grandTotal !== undefined) {
-          setGrandTotal(data.grandTotal)
-        } else {
-          setGrandTotal(data.pagination?.total || 0);
-        }
       } else {
         console.error("Failed to fetch requests:", data.error)
         toast.error("Failed to fetch requests")
@@ -213,20 +197,18 @@ export default function NTRRequestManagementPage() {
       console.error("Error fetching requests:", error)
       toast.error("Error fetching requests")
     } finally {
-      console.log('Setting loading to false...');
       setLoading(false)
-      console.log('fetchRequests completed');
     }
   }
 
   // Fetch status counts
   const fetchStatusCounts = async () => {
     try {
-      const pendingResponse = await fetch(`/api/requests/manage?status=pending receive sample&type=all&limit=1`)
-      const inProgressResponse = await fetch(`/api/requests/manage?status=in-progress&type=all&limit=1`)
-      const completedResponse = await fetch(`/api/requests/manage?status=completed&type=all&limit=1`)
-      const rejectedResponse = await fetch(`/api/requests/manage?status=rejected&type=all&limit=1`)
-      const terminatedResponse = await fetch(`/api/requests/manage?status=terminated&type=all&limit=1`)
+      const pendingResponse = await fetch(`/api/requests/manage?status=pending receive sample&type=asr&limit=1`)
+      const inProgressResponse = await fetch(`/api/requests/manage?status=in-progress&type=asr&limit=1`)
+      const completedResponse = await fetch(`/api/requests/manage?status=completed&type=asr&limit=1`)
+      const rejectedResponse = await fetch(`/api/requests/manage?status=rejected&type=asr&limit=1`)
+      const terminatedResponse = await fetch(`/api/requests/manage?status=terminated&type=asr&limit=1`)
 
       const pendingData = await pendingResponse.json()
       const inProgressData = await inProgressResponse.json()
@@ -485,8 +467,8 @@ export default function NTRRequestManagementPage() {
         <div className="container px-4 py-6 md:py-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Request Management</h1>
-              <p className="text-muted-foreground">Manage and track all test requests in the PCRD system</p>
+              <h1 className="text-3xl font-bold tracking-tight">ASR Request Management</h1>
+              <p className="text-muted-foreground">Manage and track ASR test requests in the PCRD system</p>
             </div>
 
             <Button
@@ -524,7 +506,7 @@ export default function NTRRequestManagementPage() {
                       <Beaker className="mr-2 h-4 w-4" />
                       All Capabilities
                       <Badge className="ml-auto" variant="secondary">
-                        {grandTotal}
+                        {totalCount}
                       </Badge>
                     </Button>
 
@@ -593,7 +575,7 @@ export default function NTRRequestManagementPage() {
                       }}
                     >
                       <ClipboardList className="mr-2 h-4 w-4" />
-                      All Requests
+                      All ASR Requests
                       <Badge className="ml-auto" variant="secondary">
                         {totalCount}
                       </Badge>
@@ -752,27 +734,27 @@ export default function NTRRequestManagementPage() {
                   <div className="flex items-center justify-between">
                     <CardTitle>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-blue-50 text-blue-800 hover:bg-blue-50 border-blue-200">ALL</Badge>
+                        <Badge variant="outline" className="bg-purple-50 text-purple-800 hover:bg-purple-50 border-purple-200">ASR</Badge>
                         {statusFilter === "all"
-                          ? "All Requests"
+                          ? "All ASR Requests"
                           : statusFilter === "pending receive sample"
-                            ? "Pending Requests"
+                            ? "Pending ASR Requests"
                             : statusFilter === "in-progress"
-                              ? "In Progress Requests"
+                              ? "In Progress ASR Requests"
                               : statusFilter === "completed"
-                                ? "Completed Requests"
+                                ? "Completed ASR Requests"
                                 : statusFilter === "rejected"
-                                  ? "Rejected Requests"
+                                  ? "Rejected ASR Requests"
                                   : statusFilter === "approved"
-                                    ? "Approved Requests"
-                                    : "Requests"}}
+                                    ? "Approved ASR Requests"
+                                    : "ASR Requests"}
                       </div>
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <div className="relative w-64">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          placeholder="Search requests..."
+                          placeholder="Search ASR requests..."
                           className="pl-10"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}

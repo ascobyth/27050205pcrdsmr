@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft, Check, AlertCircle, Download, Printer, Trash2, Edit, RefreshCw } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
@@ -24,6 +25,10 @@ import {
 import { toast } from "@/components/ui/use-toast"
 
 export default function RequestSummaryPage() {
+  const searchParams = useSearchParams()
+  const editRequestId = searchParams.get('edit')
+  const isEditMode = !!editRequestId
+
   // Initialize with empty data, will be populated from localStorage
   const [requestData, setRequestData] = useState({
     requestTitle: "",
@@ -219,7 +224,7 @@ export default function RequestSummaryPage() {
       const submissionData = {
         // Core request identification - use the exact title entered by the user
         requestTitle: requestData.requestTitle || "New Test Request",
-        requestStatus: "submitted",
+        requestStatus: "Pending Receive",
 
         // Cost information - use the exact values entered by the user
         useIONumber: requestData.useIONumber || "no", // This will be converted to boolean on the server
@@ -306,8 +311,16 @@ export default function RequestSummaryPage() {
       // Use a try-catch block to handle connection errors
       try {
         console.log('Submitting request to API...');
-        const response = await fetch('/api/requests/submit-request', {
-          method: 'POST',
+
+        // Choose the appropriate API endpoint based on edit mode
+        const apiEndpoint = isEditMode
+          ? `/api/requests/${editRequestId}`
+          : '/api/requests/submit-request';
+
+        const method = isEditMode ? 'PUT' : 'POST';
+
+        const response = await fetch(apiEndpoint, {
+          method: method,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -324,35 +337,54 @@ export default function RequestSummaryPage() {
         const result = await response.json();
 
         if (result.success) {
-          // Get the first request number for the toast message
-          const firstRequestNumber = result.data.requestNumbers[0];
-          const requestCount = result.data.requestNumbers.length;
+          if (isEditMode) {
+            // Handle edit mode success
+            toast({
+              title: "Request updated successfully",
+              description: `Request ${editRequestId} has been updated.`,
+            });
 
-          // Show success toast
-          toast({
-            title: "Request submitted successfully",
-            description: requestCount > 1
-              ? `Your ${requestCount} requests have been submitted. Primary request: ${firstRequestNumber}`
-              : `Your request ${firstRequestNumber} has been submitted.`,
-          });
+            // Clear the form data from localStorage
+            localStorage.removeItem('ntrFormData');
+            localStorage.removeItem('ntrSamples');
+            localStorage.removeItem('ntrTestMethods');
 
-          // Store the request numbers in localStorage for the confirmation page
-          localStorage.setItem('submittedRequestNumbers', JSON.stringify(result.data.requestNumbers));
-          localStorage.setItem('submittedRequestIds', JSON.stringify(result.data.requestIds));
+            // Redirect back to dashboard after update
+            setTimeout(() => {
+              window.location.href = "/dashboard";
+            }, 1000);
+          } else {
+            // Handle new request submission
+            // Get the first request number for the toast message
+            const firstRequestNumber = result.data.requestNumbers[0];
+            const requestCount = result.data.requestNumbers.length;
 
-          // Also store the first request number for backward compatibility
-          localStorage.setItem('submittedRequestNumber', firstRequestNumber);
-          localStorage.setItem('submittedRequestId', result.data.requestIds[0]);
+            // Show success toast
+            toast({
+              title: "Request submitted successfully",
+              description: requestCount > 1
+                ? `Your ${requestCount} requests have been submitted. Primary request: ${firstRequestNumber}`
+                : `Your request ${firstRequestNumber} has been submitted.`,
+            });
 
-          // Clear the form data from localStorage
-          localStorage.removeItem('ntrFormData');
-          localStorage.removeItem('ntrSamples');
-          localStorage.removeItem('ntrTestMethods');
+            // Store the request numbers in localStorage for the confirmation page
+            localStorage.setItem('submittedRequestNumbers', JSON.stringify(result.data.requestNumbers));
+            localStorage.setItem('submittedRequestIds', JSON.stringify(result.data.requestIds));
 
-          // Redirect to confirmation page after submission
-          setTimeout(() => {
-            window.location.href = "/request/new/ntr/confirmation";
-          }, 1000);
+            // Also store the first request number for backward compatibility
+            localStorage.setItem('submittedRequestNumber', firstRequestNumber);
+            localStorage.setItem('submittedRequestId', result.data.requestIds[0]);
+
+            // Clear the form data from localStorage
+            localStorage.removeItem('ntrFormData');
+            localStorage.removeItem('ntrSamples');
+            localStorage.removeItem('ntrTestMethods');
+
+            // Redirect to confirmation page after submission
+            setTimeout(() => {
+              window.location.href = "/request/new/ntr/confirmation";
+            }, 1000);
+          }
         } else {
           // Show error toast
           toast({
@@ -524,12 +556,19 @@ export default function RequestSummaryPage() {
 
         <div className="flex flex-col space-y-2">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold tracking-tight">Request Summary</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {isEditMode ? "Edit Request" : "Request Summary"}
+            </h1>
             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-              Draft
+              {isEditMode ? "Editing" : "Draft"}
             </Badge>
           </div>
-          <p className="text-muted-foreground">Review your request details before submission</p>
+          <p className="text-muted-foreground">
+            {isEditMode
+              ? "Review and update your request details"
+              : "Review your request details before submission"
+            }
+          </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -820,7 +859,7 @@ export default function RequestSummaryPage() {
                   className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
                   onClick={handleSubmit}
                 >
-                  Submit Request
+                  {isEditMode ? "Update Request" : "Submit Request"}
                 </Button>
               </div>
             </div>

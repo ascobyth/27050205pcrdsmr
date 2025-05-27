@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useEffect, useRef } from "react"
-
+import { useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { ChevronLeft, ChevronRight, HelpCircle, Plus, Save, Trash2, Upload, Copy, Pencil, X } from "lucide-react"
 import Link from "next/link"
@@ -69,8 +69,14 @@ interface FormData {
 
 export default function NTRPage() {
   const { user, isLoading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
+  const editRequestId = searchParams.get('edit')
+  const isEditMode = !!editRequestId
+
   const [loadingCostCenter, setLoadingCostCenter] = useState(true)
   const [costCenterError, setCostCenterError] = useState<string | null>(null)
+  const [loadingEditData, setLoadingEditData] = useState(false)
+  const [editDataError, setEditDataError] = useState<string | null>(null)
 
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<FormData>({
@@ -259,8 +265,14 @@ export default function NTRPage() {
     }
   }, [user?.email, authLoading]);
 
-  // Load data from localStorage
+  // Load data from localStorage (only if not in edit mode)
   useEffect(() => {
+    // Skip loading from localStorage if we're in edit mode
+    if (isEditMode) {
+      console.log("Skipping localStorage load because we're in edit mode")
+      return
+    }
+
     try {
       // First try to load from the persistent storage
       const persistentFormData = localStorage.getItem("ntrFormData_persistent")
@@ -304,7 +316,7 @@ export default function NTRPage() {
     } catch (error) {
       console.error("Error loading saved data from localStorage:", error)
     }
-  }, []);
+  }, [isEditMode]);
 
   // Fetch commercial grades from the database
   useEffect(() => {
@@ -628,6 +640,117 @@ export default function NTRPage() {
 
     fetchApprovers()
   }, [user?.email])
+
+  // Load existing request data for edit mode
+  useEffect(() => {
+    if (isEditMode && editRequestId) {
+      const loadRequestData = async () => {
+        try {
+          setLoadingEditData(true)
+          setEditDataError(null)
+
+          const response = await fetch(`/api/requests/details?requestId=${editRequestId}`)
+          const result = await response.json()
+
+          if (result.success && result.data) {
+            const requestData = result.data
+
+            // Parse samples from JSON string
+            let samples: Sample[] = []
+            try {
+              if (requestData.jsonSampleList) {
+                const sampleData = JSON.parse(requestData.jsonSampleList)
+                samples = sampleData.map((sample: any) => ({
+                  category: sample.category || "",
+                  grade: sample.grade || "",
+                  lot: sample.lot || "",
+                  sampleIdentity: sample.sampleIdentity || "",
+                  type: sample.type || "",
+                  form: sample.form || "",
+                  tech: sample.tech || "",
+                  feature: sample.feature || "",
+                  plant: sample.plant || "",
+                  samplingDate: sample.samplingDate || "",
+                  samplingTime: sample.samplingTime || "",
+                  generatedName: sample.generatedName || sample.name || ""
+                }))
+              }
+            } catch (e) {
+              console.warn('Failed to parse sample list:', e)
+            }
+
+            // Parse test methods from JSON string
+            let testMethods: any[] = []
+            try {
+              if (requestData.jsonTestingList) {
+                testMethods = JSON.parse(requestData.jsonTestingList)
+              }
+            } catch (e) {
+              console.warn('Failed to parse testing list:', e)
+            }
+
+            // Update form data with existing request data
+            setFormData(prev => ({
+              ...prev,
+              requestTitle: requestData.requestTitle || "",
+              priority: requestData.priority || "normal",
+              useIONumber: requestData.useIoNumber ? "yes" : "no",
+              ioNumber: requestData.ioCostCenter || "",
+              costCenter: requestData.requesterCostCenter || "",
+              urgentMemo: null, // File cannot be loaded from database
+              samples: samples,
+              testMethods: testMethods,
+              approver: "", // Will need to be set by user
+              urgencyType: requestData.urgentType || "",
+              urgencyReason: requestData.urgencyReason || "",
+              isOnBehalf: false, // Reset for edit mode
+              onBehalfOfUser: "",
+              onBehalfOfName: "",
+              onBehalfOfEmail: "",
+              onBehalfOfCostCenter: ""
+            }))
+
+            // Show sample sections if samples exist
+            if (samples.length > 0) {
+              setShowSampleSections(true)
+            }
+
+            // Save loaded data to localStorage for form persistence
+            localStorage.setItem('ntrFormData', JSON.stringify({
+              requestTitle: requestData.requestTitle || "",
+              priority: requestData.priority || "normal",
+              useIONumber: requestData.useIoNumber ? "yes" : "no",
+              ioNumber: requestData.ioCostCenter || "",
+              costCenter: requestData.requesterCostCenter || "",
+              urgentMemo: null,
+              approver: "",
+              urgencyType: "",
+              urgencyReason: "",
+              isOnBehalf: false,
+              onBehalfOfUser: "",
+              onBehalfOfName: "",
+              onBehalfOfEmail: "",
+              onBehalfOfCostCenter: ""
+            }))
+
+            localStorage.setItem('ntrSamples', JSON.stringify(samples))
+            localStorage.setItem('ntrTestMethods', JSON.stringify(testMethods))
+
+            console.log('Loaded request data for editing:', requestData)
+          } else {
+            throw new Error(result.error || 'Failed to load request data')
+          }
+        } catch (error: any) {
+          console.error('Error loading request data:', error)
+          setEditDataError(error.message)
+        } finally {
+          setLoadingEditData(false)
+        }
+      }
+
+      loadRequestData()
+    }
+  }, [isEditMode, editRequestId])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -1690,11 +1813,46 @@ export default function NTRPage() {
     <DashboardLayout>
       <div className="container mx-auto py-6 max-w-7xl">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Create Normal Test Request (NTR)</h1>
+          <h1 className="text-3xl font-bold">
+            {isEditMode ? "Edit Normal Test Request (NTR)" : "Create Normal Test Request (NTR)"}
+          </h1>
           <p className="text-muted-foreground">
-            Request standard polymer testing methods with predefined parameters and workflows
+            {isEditMode
+              ? "Modify your existing test request details and samples"
+              : "Request standard polymer testing methods with predefined parameters and workflows"
+            }
           </p>
+          {isEditMode && editRequestId && (
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-700">
+                <strong>Editing Request:</strong> {editRequestId}
+              </p>
+            </div>
+          )}
         </div>
+
+        {/* Loading indicator for edit mode */}
+        {isEditMode && loadingEditData && (
+          <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
+            <div className="flex items-center space-x-3">
+              <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+              <span className="text-sm text-gray-600">Loading request data for editing...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Error indicator for edit mode */}
+        {isEditMode && editDataError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex items-center space-x-3">
+              <div className="h-5 w-5 text-red-500">⚠️</div>
+              <div>
+                <p className="text-sm text-red-700 font-medium">Failed to load request data</p>
+                <p className="text-xs text-red-600">{editDataError}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center space-x-4 mb-6">
           <div className={`relative flex items-center justify-center h-10 w-10 rounded-full border ${currentStep >= 1 ? "bg-green-500 border-green-600 text-white" : "bg-muted border-muted-foreground/20 text-muted-foreground"}`}>
@@ -1739,7 +1897,7 @@ export default function NTRPage() {
                   <div className="space-y-2">
                     <Label>Priority</Label>
                     <RadioGroup
-                      defaultValue={formData.priority}
+                      value={formData.priority}
                       onValueChange={(value) => handleSelectChange("priority", value)}
                       className="flex flex-col space-y-1"
                     >
@@ -1761,7 +1919,7 @@ export default function NTRPage() {
                   <div className="space-y-2">
                     <Label>Use IO Number</Label>
                     <RadioGroup
-                      defaultValue={formData.useIONumber}
+                      value={formData.useIONumber}
                       onValueChange={(value) => handleSelectChange("useIONumber", value)}
                       className="flex flex-col space-y-1"
                     >
@@ -2166,9 +2324,9 @@ export default function NTRPage() {
                     <p className="text-sm text-muted-foreground">
                       Browse our comprehensive catalog of test methods and select the ones you need.
                     </p>
-                    <Link href="/request/new/ntr/test-methods">
+                    <Link href={`/request/new/ntr/test-methods${isEditMode ? `?edit=${editRequestId}` : ''}`}>
                       <Button className="mt-2 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 w-full">
-                        Browse Test Method Catalog
+                        {isEditMode ? "Edit Test Method Selection" : "Browse Test Method Catalog"}
                       </Button>
                     </Link>
                   </div>
@@ -2192,9 +2350,11 @@ export default function NTRPage() {
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button className="ml-auto bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600">
-                  Submit Request
-                </Button>
+                <Link href={`/request/new/ntr/summary${isEditMode ? `?edit=${editRequestId}` : ''}`}>
+                  <Button className="ml-auto bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600">
+                    {isEditMode ? "Review Changes" : "Submit Request"}
+                  </Button>
+                </Link>
               )}
             </div>
           </div>

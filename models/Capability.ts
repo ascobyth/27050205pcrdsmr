@@ -20,7 +20,8 @@ export const CAPABILITY_CATEGORIES = [
   { id: "microstructure", name: "Microstructure", shortName: "MC", icon: "Microscope" },
   { id: "smallmolecules", name: "Small molecules", shortName: "SM", icon: "FlaskConical" },
   { id: "mesostructure", name: "Mesostructure", shortName: "ME", icon: "FlaskConical" },
-  { id: "imaging", name: "Imaging", shortName: "IM", icon: "Beaker" }
+  { id: "imaging", name: "Imaging", shortName: "IM", icon: "Beaker" },
+  { id: "rd", name: "R&D", shortName: "RD", icon: "Beaker" }
 ];
 
 // Helper function to get capability icon

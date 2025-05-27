@@ -5,6 +5,7 @@ import { DialogTitle } from "@/components/ui/dialog"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { ChevronLeft, Search, Info } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,9 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function TestMethodCatalogPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editRequestId = searchParams.get('edit')
+  const isEditMode = !!editRequestId
 
   // State for form data from previous steps
   const [formData, setFormData] = useState({
@@ -29,6 +33,10 @@ export default function TestMethodCatalogPage() {
     ioNumber: "",
     costCenter: ""
   })
+
+  // State for edit mode capability filtering
+  const [editModeCapability, setEditModeCapability] = useState<string | null>(null)
+  const [loadingEditData, setLoadingEditData] = useState(false)
 
   // Update the testMethods state to be empty initially
   const [testMethods, setTestMethods] = useState<any[]>([])
@@ -50,6 +58,46 @@ export default function TestMethodCatalogPage() {
 
   // Get samples from localStorage (populated in the Sample Information page)
   const [samples, setSamples] = useState<Array<{ id: string; name: string; category: string }>>([])
+
+  // Load edit data if in edit mode
+  useEffect(() => {
+    if (isEditMode && editRequestId) {
+      const loadEditData = async () => {
+        try {
+          setLoadingEditData(true)
+          const response = await fetch(`/api/requests/details?requestId=${editRequestId}`)
+          const result = await response.json()
+
+          if (result.success && result.data) {
+            const requestData = result.data
+
+            // Extract capability information from existing test methods
+            try {
+              if (requestData.jsonTestingList) {
+                const testMethods = JSON.parse(requestData.jsonTestingList)
+                if (testMethods.length > 0) {
+                  // Get the capability from the first test method
+                  const firstMethod = testMethods[0]
+                  if (firstMethod.capabilityId) {
+                    setEditModeCapability(firstMethod.capabilityId)
+                    console.log('Edit mode: Setting capability filter to:', firstMethod.capabilityId)
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to parse testing list for capability extraction:', e)
+            }
+          }
+        } catch (error) {
+          console.error('Error loading edit data:', error)
+        } finally {
+          setLoadingEditData(false)
+        }
+      }
+
+      loadEditData()
+    }
+  }, [isEditMode, editRequestId])
 
   // Load samples and smart assistant recommendations from localStorage on component mount
   useEffect(() => {
@@ -276,9 +324,24 @@ export default function TestMethodCatalogPage() {
   // currentMethodId and currentInstanceIndex were removed as we no longer need the Sample Selection Dialog
   const [showOnlySelected, setShowOnlySelected] = useState(false)
 
+  // Update activeCategory when edit mode capability is loaded
+  useEffect(() => {
+    if (isEditMode && editModeCapability) {
+      setActiveCategory(editModeCapability)
+    }
+  }, [isEditMode, editModeCapability])
+
   // Filter methods based on category and search query
   const filteredMethods = testMethods.filter((method) => {
-    // Filter by capability
+    // In edit mode, restrict to only the capability from the original request
+    if (isEditMode && editModeCapability) {
+      const matchesEditCapability = method.capabilityId && method.capabilityId === editModeCapability
+      if (!matchesEditCapability) {
+        return false
+      }
+    }
+
+    // Filter by capability (only applies in non-edit mode or when no edit capability is set)
     const matchesCategory =
       activeCategory === "all" ||
       (method.capabilityId && method.capabilityId === activeCategory)
@@ -608,7 +671,7 @@ export default function TestMethodCatalogPage() {
     // Add a small delay to ensure data is saved before navigation
     setTimeout(() => {
       // Then navigate back to the sample information page
-      window.location.href = "/request/new/ntr";
+      window.location.href = `/request/new/ntr${isEditMode ? `?edit=${editRequestId}` : ''}`;
     }, 500);
   }
 
@@ -618,13 +681,27 @@ export default function TestMethodCatalogPage() {
         <div className="flex items-center space-x-2">
           <Button variant="ghost" size="sm" className="gap-1" onClick={(e) => handleBackToSampleInfo(e)}>
             <ChevronLeft className="h-4 w-4" />
-            Back to Sample Information
+            {isEditMode ? "Back to Edit Request" : "Back to Sample Information"}
           </Button>
         </div>
 
         <div className="flex flex-col space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Test Method Catalog</h1>
-          <p className="text-muted-foreground">Browse and select test methods for your samples</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isEditMode ? "Edit Test Method Selection" : "Test Method Catalog"}
+          </h1>
+          <p className="text-muted-foreground">
+            {isEditMode
+              ? "Modify your test method selection for this request"
+              : "Browse and select test methods for your samples"
+            }
+          </p>
+          {isEditMode && editRequestId && (
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-700">
+                <strong>Editing Request:</strong> {editRequestId}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -642,8 +719,12 @@ export default function TestMethodCatalogPage() {
                   autoComplete="off"
                 />
               </div>
-              <Select value={activeCategory} onValueChange={setActiveCategory}>
-                <SelectTrigger className="w-[180px]">
+              <Select
+                value={activeCategory}
+                onValueChange={setActiveCategory}
+                disabled={isEditMode && editModeCapability}
+              >
+                <SelectTrigger className={`w-[180px] ${isEditMode && editModeCapability ? 'opacity-60 cursor-not-allowed' : ''}`}>
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -664,6 +745,12 @@ export default function TestMethodCatalogPage() {
                   )}
                 </SelectContent>
               </Select>
+              {isEditMode && editModeCapability && (
+                <div className="text-xs text-blue-600 mt-1">
+                  <Info className="inline h-3 w-3 mr-1" />
+                  Capability filter is locked to the original request's capability in edit mode
+                </div>
+              )}
             </div>
 
             {/* Test method list */}
@@ -920,11 +1007,11 @@ export default function TestMethodCatalogPage() {
             {/* Action buttons */}
             <div className="flex justify-end space-x-3">
               <Button variant="outline" onClick={(e) => handleBackToSampleInfo(e)}>
-                Back to Sample Information
+                {isEditMode ? "Back to Edit Request" : "Back to Sample Information"}
               </Button>
-              <Link href="/request/new/ntr/summary" onClick={handleSaveAndContinue}>
+              <Link href={`/request/new/ntr/summary${isEditMode ? `?edit=${editRequestId}` : ''}`} onClick={handleSaveAndContinue}>
                 <Button className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600">
-                  Save and Continue
+                  {isEditMode ? "Save Changes and Continue" : "Save and Continue"}
                 </Button>
               </Link>
             </div>

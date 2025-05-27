@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase, { mongoose } from '@/lib/db';
 
+// Clear model cache to ensure we get the latest schema
+if (mongoose.models.TestingSampleList) {
+  delete mongoose.models.TestingSampleList;
+}
+if (mongoose.models.RequestList) {
+  delete mongoose.models.RequestList;
+}
+
 // Import models directly
 const RequestList = mongoose.models.RequestList || require('@/models/RequestList');
 const TestingSampleList = mongoose.models.TestingSampleList || require('@/models/TestingSampleList');
@@ -54,7 +62,7 @@ export async function POST(request) {
       const requestData = {
         // Core request identification
         requestNumber,
-        requestStatus: 'submitted',
+        requestStatus: 'Pending Receive',
 
         // Request details - use the exact title entered by the user
         requestTitle: body.requestTitle || 'New Test Request',
@@ -184,7 +192,7 @@ export async function POST(request) {
               testingId,
 
               // Status tracking
-              sampleStatus: 'submitted',
+              sampleStatus: 'Pending Receive',
 
               // Important dates
               submitDate: new Date(),

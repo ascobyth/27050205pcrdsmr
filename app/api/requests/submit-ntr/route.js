@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import mongoose from 'mongoose';
 
+// Clear model cache to ensure we get the latest schema
+if (mongoose.models.TestingSampleList) {
+  delete mongoose.models.TestingSampleList;
+}
+if (mongoose.models.RequestList) {
+  delete mongoose.models.RequestList;
+}
+
 // Import models directly from the models directory
 const RequestList = mongoose.models.RequestList || require('@/models/RequestList');
 const TestingSampleList = mongoose.models.TestingSampleList || require('@/models/TestingSampleList');
@@ -35,7 +43,7 @@ export async function POST(request) {
       // Create the main request entry
       const requestData = {
         requestNumber,
-        requestStatus: 'submitted',
+        requestStatus: 'Pending Receive',
         requestTitle: body.requestTitle,
         useIoNumber: body.useIONumber === 'yes',
         ioCostCenter: body.ioNumber,
@@ -87,7 +95,7 @@ export async function POST(request) {
               testingRemark: method.remarks || '',
               testingListId,
               testingId,
-              sampleStatus: 'submitted',
+              sampleStatus: 'Pending Receive',
               submitDate: new Date(),
               requestType: 'NTR',
             };

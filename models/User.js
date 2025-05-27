@@ -70,7 +70,23 @@ const UserSchema = new Schema(
     onBehalfAccess: [{
       type: Schema.Types.ObjectId,
       ref: 'User'
-    }]
+    }],
+
+    // Points system for evaluations
+    points: {
+      type: Number,
+      default: 0,
+      min: 0,
+      description: 'Points earned from evaluating requests'
+    },
+
+    // Score system - number of evaluations done by user
+    score: {
+      type: Number,
+      default: 0,
+      min: 0,
+      description: 'Number of evaluations done by this user'
+    }
   },
   {
     timestamps: {
