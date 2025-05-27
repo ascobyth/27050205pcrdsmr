@@ -123,14 +123,19 @@ export default function DashboardPage() {
   }
 
   const handleEditRequest = (request: UIRequest) => {
-    // Navigate to edit page based on request type
     const requestType = request.type.toLowerCase()
     const editUrl = `/request/new/${requestType}?edit=${request.id}`
 
     toast.info(`Opening ${request.type} request for editing: ${request.id}`)
 
-    // Navigate to the edit page
-    window.location.href = editUrl
+    // Use Next.js router for client-side navigation
+    try {
+      const { push } = require('next/navigation')
+      push(editUrl)
+    } catch (err) {
+      // Fallback to window location if router is not available
+      window.location.href = editUrl
+    }
   }
 
   // Handle opening request details view

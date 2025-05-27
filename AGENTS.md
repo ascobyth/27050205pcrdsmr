@@ -355,3 +355,8 @@ This implementation allows users to submit equipment reservation requests, which
 - User Concerned: request-management
 - Issue: Duplicate keys in pagination causing React warning
 - Progress: Rewrote page number generation to ensure unique keys.
+
+## Update - Edit Request Data Fix
+- User Concerned: request-management
+- Issue: Edit page did not preload request data
+- Progress: Added jsonSampleList and jsonTestingList to details API and improved navigation
